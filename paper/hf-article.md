@@ -42,6 +42,7 @@ The repo has a second notebook that fixes the first three: three seeds, official
 
 ## Links
 
+- Full report (Zenodo): [doi.org/10.5281/zenodo.23008141](https://doi.org/10.5281/zenodo.23008141)
 - Code and notebook: [github.com/VGokulsai/nllb-entity-mt](https://github.com/VGokulsai/nllb-entity-mt)
 - Original paper: [Zero at SemEval-2025 Task 2](https://aclanthology.org/2025.semeval-1.157/) (Gundam, Marri, Malladi, Mamidi)
 - Task paper: [SemEval-2025 Task 2: Entity-Aware Machine Translation](https://aclanthology.org/2025.semeval-1.326/) (Conia, Li, Navigli, Potdar)
