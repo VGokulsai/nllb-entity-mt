@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teaching a 600M translation model to get names right</title>
+<meta name="description" content="A small reproduction of SemEval-2025 Task 2: LoRA fine-tuning of NLLB-600M for entity-aware English to Spanish translation.">
+<style>
+  :root { --bg:#fbfaf6; --ink:#1b1b18; --muted:#5e5a50; --accent:#2f4a3e; --line:#dcd6c6; --card:#f3f1ea; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161614; --ink:#ecebe6; --muted:#a8a498; --accent:#9cc2ad; --line:#34332e; --card:#1f1f1c; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.65 Georgia, "Times New Roman", serif; }
+  main { max-width: 700px; margin: 0 auto; padding: 44px 20px 80px; }
+  h1 { font-size: clamp(1.7rem, 5vw, 2.3rem); line-height: 1.15; margin: 0 0 10px; }
+  h2 { font-size: 1.25rem; margin: 34px 0 8px; }
+  .by { color: var(--muted); font-size: .95rem; margin-bottom: 26px; }
+  a { color: var(--accent); }
+  code { font-family: Consolas, "SFMono-Regular", monospace; font-size: .86em; background: var(--card); padding: 1px 5px; border-radius: 4px; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  .table-wrap { overflow-x: auto; margin: 14px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; white-space: normal; }
+  thead th { border-bottom: 2px solid var(--muted); }
+  .note { background: var(--card); border-left: 3px solid var(--accent); padding: 12px 16px; margin: 18px 0; }
+</style></head>
+<body><main>
+
+<h1>Teaching a 600M translation model to get names right</h1>
+<div class="by">Gokul Sai · a small SemEval-2025 reproduction · 28 September 2026 · <a href="https://doi.org/10.5281/zenodo.23008141">full report (DOI)</a></div>
+
+<p>Translation models are good at sentences and bad at names. Ask NLLB-600M to translate "What kind of artwork is The Signal-Man?" into Spanish and you get "¿Qué tipo de obra de arte es El Hombre de la Señal?". The grammar is fine. The title is wrong: in Spanish it's "El guardavía". Ask about the film About Joan and the model leaves it in English, where the accepted title is "À propos de Joan".</p>
+
+<p>SemEval-2025 Task 2 (Entity-Aware Machine Translation) is built around exactly this problem. One of the teams, Zero from IIIT Hyderabad, tried something cheap: take the small distilled NLLB model and fine-tune it with LoRA for each language. I wanted to know if that actually helps, so I reran it for English→Spanish on a free Colab GPU.</p>
+
+<h2>What I did</h2>
+<ul>
+  <li>Model: <code>facebook/nllb-200-distilled-600M</code>, with LoRA on the attention projections (rank 16, alpha 32). That trains 4.7M of 620M parameters, 0.76%.</li>
+  <li>Data: <a href="https://huggingface.co/datasets/sapienzanlp/ea-mt-benchmark"><code>sapienzanlp/ea-mt-benchmark</code></a>, <code>en-es</code>. I trained on the 739-sentence validation split and tested on all 5,338 test sentences. No overlap.</li>
+  <li>Training: 3 epochs, batch size 8, learning rate 2e-4. It took 62 seconds on a T4.</li>
+</ul>
+<p>The paper doesn't list its LoRA settings, so these are mine. It also built its training data by running the sentences through the Google Translate API. I skipped that and trained on the benchmark's own human translations, which is free and tests the fine-tuning claim more directly, but it's a real difference from their setup.</p>
+
+<h2>Results</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th></th><th>Base NLLB-600M</th><th>+ LoRA</th><th>Change</th></tr></thead>
+  <tbody>
+    <tr><td>BLEU, all 5,338 test sentences</td><td>60.22</td><td>65.25</td><td>+5.0</td></tr>
+    <tr><td>Entity accuracy, first 300 sentences</td><td>19.7%</td><td>23.7%</td><td>+4.0 points</td></tr>
+  </tbody>
+</table></div>
+<p>BLEU went up about 8% in relative terms. Entity accuracy went up about 20%. So fine-tuning helped the names more than it helped the sentences overall, which is the whole argument of the original paper.</p>
+<p>The absolute entity number is still low, though. Even after fine-tuning, about three out of four sentences in the sample miss the correct name. That makes sense: the model never looks anything up, and 739 examples can't teach it every film title in Spanish.</p>
+
+<h2>What this doesn't show</h2>
+<p>I almost wrote "I beat the paper" because they report Spanish BLEU of 59.14 and I got 65. That comparison doesn't hold. BLEU scores from different tools and settings aren't comparable, and the paper doesn't say which split it scored. The number I trust is the one inside my own experiment: same base model, same data, same metric, +5 BLEU.</p>
+<p>Other limits I know about:</p>
+<ul>
+  <li>It's one training run. I don't know yet how much the gain moves with a different random seed.</li>
+  <li>My entity check is a case-sensitive substring match on 300 sentences. The official metric (M-ETA) ignores case and I haven't run it on the full test set.</li>
+  <li>I didn't compute COMET, the task's other official metric.</li>
+  <li>It's one language pair out of the paper's ten, and Spanish is one of the easier ones for NLLB.</li>
+</ul>
+<p>The repo has a second notebook that fixes the first three: three seeds, official M-ETA and COMET-22 on all 5,338 sentences, and a breakdown by entity type (films, places, people and so on). When it's run I'll post the numbers and the fine-tuned adapter here on the Hub.</p>
+
+<h2>Links</h2>
+<ul>
+  <li>Full report (Zenodo): <a href="https://doi.org/10.5281/zenodo.23008141">doi.org/10.5281/zenodo.23008141</a></li>
+  <li>Code and notebook: <a href="https://github.com/VGokulsai/nllb-entity-mt">github.com/VGokulsai/nllb-entity-mt</a></li>
+  <li>Original paper: <a href="https://aclanthology.org/2025.semeval-1.157/">Zero at SemEval-2025 Task 2</a> (Gundam, Marri, Malladi, Mamidi)</li>
+  <li>Task paper: <a href="https://aclanthology.org/2025.semeval-1.326/">SemEval-2025 Task 2: Entity-Aware Machine Translation</a> (Conia, Li, Navigli, Potdar)</li>
+</ul>
+
+<div class="note">I'm a high-school student in Hyderabad and this is my first reproduction, written up with help from Claude. If you work on MT and spot something wrong, I'd like to hear it.</div>
+
+</main></body></html>
