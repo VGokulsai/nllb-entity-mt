@@ -1,0 +1,15 @@
+{
+  "upload_type": "publication",
+  "publication_type": "report",
+  "title": "Reproducing Zero at SemEval-2025 Task 2: LoRA fine-tuning of NLLB-600M for entity-aware English→Spanish translation",
+  "creators": [{ "name": "Gokul Sai", "affiliation": "Independent" }],
+  "description": "<p>A reproduction report (version 1, not peer reviewed). The full report is <code>paper/report-v1.pdf</code> in this archive.</p><p><b>Scope.</b> Gundam et al. (2025) fine-tuned the 600M-parameter distilled NLLB model with LoRA, separately for each language, to translate named entities better in SemEval-2025 Task 2. I tested the core claim for one language pair, English→Spanish: does LoRA fine-tuning on task data improve translation over the same base model?</p><p><b>Methodology.</b> One Colab notebook on a free T4 GPU. I trained on the benchmark's 739-sentence validation split and evaluated on its 5,338-sentence test split, comparing the base and fine-tuned models under identical data and metrics. The original paper does not report its LoRA settings, so the settings here are my own.</p><p><b>Results.</b> BLEU on the full test set rose from 60.22 to 65.25 (+5.03). A rough entity check on the first 300 test sentences rose from 19.7% to 23.7%, which is about 20% relative against about 8% relative for BLEU. The direction matches the paper's claim. These come from a single training run.</p><p>Code, notebooks and a second evaluation notebook (three seeds, official M-ETA and COMET-22) are included.</p>",
+  "license": "cc-by-4.0",
+  "keywords": ["machine translation", "named entities", "SemEval-2025", "NLLB", "LoRA", "reproducibility"],
+  "version": "1.0.0",
+  "language": "eng",
+  "related_identifiers": [
+    { "identifier": "https://aclanthology.org/2025.semeval-1.157/", "relation": "cites", "resource_type": "publication-conferencepaper" },
+    { "identifier": "https://aclanthology.org/2025.semeval-1.326/", "relation": "cites", "resource_type": "publication-conferencepaper" }
+  ]
+}
