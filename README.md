@@ -1,5 +1,9 @@
 # nllb-entity-mt
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23008140.svg)](https://doi.org/10.5281/zenodo.23008140)
+
+Report: [`paper/report-v1.pdf`](paper/report-v1.pdf) (reproduction report, version 1, not peer reviewed).
+
 A reproduction of **"Zero at SemEval-2025 Task 2: Entity-Aware Machine Translation"** (Gundam, Marri, Malladi, Mamidi — LTRC, IIIT Hyderabad). The paper fine-tunes a small translation model to translate **named entities** (movie titles, place names, people) correctly, which general models get wrong even when the rest of the sentence is fine.
 
 I reproduced the core method for **one language pair, English → Spanish**: fine-tune `facebook/nllb-200-distilled-600M` with **LoRA** on the SemEval-2025 EA-MT data, and measure whether it improves translation over the base model.
