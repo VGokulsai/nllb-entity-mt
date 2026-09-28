@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Reproducing Zero at SemEval-2025 Task 2</title>
+<style>
+  @page { size: A4; margin: 20mm 20mm 20mm 20mm; }
+  body { font: 10.5pt/1.45 "Georgia", "Times New Roman", serif; color: #111; max-width: 170mm; margin: 0 auto; }
+  h1 { font-size: 16pt; line-height: 1.25; margin: 0 0 6pt; text-align: center; }
+  .byline { text-align: center; font-size: 10pt; margin-bottom: 4pt; }
+  .meta { text-align: center; font-size: 9pt; color: #444; margin-bottom: 14pt; }
+  h2 { font-size: 11.5pt; margin: 14pt 0 4pt; break-after: avoid; page-break-after: avoid; }
+  thead th { white-space: nowrap; }
+  p { margin: 0 0 7pt; text-align: justify; }
+  .summary { border: 1px solid #999; padding: 8pt 11pt; margin: 0 0 12pt; font-size: 9.6pt; }
+  .summary h2 { margin-top: 0; }
+  .summary p { margin-bottom: 5pt; }
+  .summary b { font-weight: bold; }
+  table { border-collapse: collapse; margin: 6pt auto 4pt; font-size: 9.6pt; }
+  th, td { padding: 3pt 9pt; border-bottom: 1px solid #bbb; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { border-bottom: 1.5px solid #333; }
+  .cap { font-size: 9pt; text-align: center; color: #333; margin-bottom: 10pt; }
+  code { font-family: Consolas, monospace; font-size: 9pt; }
+  .ex { font-size: 9.6pt; margin: 4pt 0 8pt 14pt; }
+  ol.refs { font-size: 9pt; padding-left: 16pt; }
+  ol.refs li { margin-bottom: 3pt; }
+  a { color: #111; }
+</style></head>
+<body>
+
+<h1>Reproducing <i>Zero at SemEval-2025 Task 2</i>: LoRA fine-tuning of NLLB-600M for entity-aware English→Spanish translation</h1>
+<div class="byline">Gokul Sai<br>Independent (high-school student), Hyderabad, India · gokulsai1004@gmail.com</div>
+<div class="meta">Reproduction report, version 1 · 28 September 2026 · not peer reviewed<br>
+Code: <a href="https://github.com/VGokulsai/nllb-entity-mt">github.com/VGokulsai/nllb-entity-mt</a></div>
+
+<div class="summary">
+<h2>Reproducibility summary</h2>
+<p><b>Scope.</b> Gundam et al. (2025) fine-tuned the 600M-parameter distilled NLLB model with LoRA, separately for each language, to translate named entities better in SemEval-2025 Task 2. I tested the core claim for one language pair, English→Spanish: does LoRA fine-tuning on task data improve translation over the same base model?</p>
+<p><b>Methodology.</b> One Colab notebook on a free T4 GPU. I trained on the benchmark's 739-sentence validation split and evaluated on its 5,338-sentence test split, comparing the base and fine-tuned models under identical data and metrics. The original paper does not report its LoRA settings, so the settings here are my own.</p>
+<p><b>Results.</b> BLEU on the full test set rose from 60.22 to 65.25 (+5.03). A rough entity check on the first 300 test sentences rose from 19.7% to 23.7%, which is about 20% relative against about 8% relative for BLEU. The direction matches the paper's claim. These come from a single training run.</p>
+<p><b>What was easy.</b> The model, the data and a LoRA setup that fits a free GPU were all public. Training took about a minute.</p>
+<p><b>What was difficult.</b> The paper gives no fine-tuning hyperparameters and no Spanish-only entity or COMET scores, so a like-for-like comparison with its numbers was not possible. It also builds training data with the paid Google Translate API, which I replaced with the benchmark's own reference translations.</p>
+<p><b>Communication with original authors.</b> I emailed the senior author on 25 September 2026 with the code.</p>
+</div>
+
+<h2>1 Introduction</h2>
+<p>Machine translation systems often handle a sentence well and still get its names wrong. Titles of books and films are the clearest case, because their accepted translation is often not a literal one. On the first test sentences of the benchmark used here, the base model translates the title <i>The Signal-Man</i> as "El Hombre de la Señal", while the accepted Spanish title is "El guardavía". It leaves the film <i>About Joan</i> in English, where the reference uses "À propos de Joan".</p>
+<p>SemEval-2025 Task 2 (Conia et al., 2025) measures exactly this. The Zero team from IIIT Hyderabad (Gundam et al., 2025) took a small, cheap route: fine-tune NLLB-200-distilled-600M (NLLB Team, 2022) with LoRA (Hu et al., 2022) for each target language. This report checks whether that route helps, for English→Spanish, on a single free GPU.</p>
+
+<h2>2 Scope of reproducibility</h2>
+<p>The claim tested is that LoRA fine-tuning of NLLB-600M on EA-MT data improves translation over the base model, with a larger effect on entity accuracy than on overall translation quality. I do not try to reproduce the paper's absolute scores. It reports Spanish BLEU of 59.14 (Gundam et al., 2025, Table 1) without stating which split was scored, and BLEU values computed with different tools or settings are not comparable (Post, 2018). The trustworthy comparison in this report is between the base and fine-tuned model inside the same experiment.</p>
+
+<h2>3 Methodology</h2>
+<p><b>Data.</b> The EA-MT benchmark from Hugging Face (<code>sapienzanlp/ea-mt-benchmark</code>, config <code>en-es</code>, CC BY-SA 4.0) has sample, validation and test splits of 72, 739 and 5,338 sentences, each with one to three reference translations and the accepted translations of its entity. The task paper lists the en-es test split as 5,337 sentences; the downloadable file has 5,338 rows with unique ids, and I used all of them. I trained on the validation split and evaluated on the test split, and the two share no ids.</p>
+<p><b>Model and fine-tuning.</b> <code>facebook/nllb-200-distilled-600M</code> with LoRA adapters (rank 16, alpha 32, dropout 0.05) on the attention projections <code>q_proj</code>, <code>k_proj</code>, <code>v_proj</code> and <code>out_proj</code>, using the PEFT library. That trains 4,718,592 of 619,792,384 parameters (0.76%). Training used batch size 8, learning rate 2e-4, 3 epochs and fp16 on one T4 GPU: 279 steps in 62 seconds, ending at a training loss of 0.761. Each training sentence used its first reference translation as the target.</p>
+<p><b>Deviation from the paper.</b> The Zero team translated the task sentences with the Google Translate API and trained on that "silver" data. I trained directly on the benchmark's human reference translations. This removes a paid dependency and changes the training signal, so it is a real difference between the two setups.</p>
+<p><b>Decoding and metrics.</b> Both models decode greedily with the model's default generation settings and at most 128 new tokens. BLEU is corpus-level sacreBLEU (Post, 2018) with default settings, using every reference; sentences with fewer references are padded with their first one. The entity check counts a sentence as correct if any accepted entity translation appears in the output as an exact, case-sensitive substring. The task's official M-ETA metric uses the same idea but ignores letter case (Conia et al., 2025), so my check is slightly stricter. I ran it on the first 300 test sentences only.</p>
+
+<h2>4 Results</h2>
+<table>
+  <thead><tr><th>Metric</th><th>Test sentences</th><th>Base NLLB-600M</th><th>+ LoRA</th><th>Change</th></tr></thead>
+  <tbody>
+    <tr><td>BLEU</td><td>5,338 (all)</td><td>60.22</td><td>65.25</td><td>+5.03 (8% rel.)</td></tr>
+    <tr><td>BLEU</td><td>300 (first)</td><td>58.02</td><td>64.75</td><td>+6.73</td></tr>
+    <tr><td>Entity accuracy (case-sensitive match)</td><td>300 (first)</td><td>19.7%</td><td>23.7%</td><td>+4.0 pts (20% rel.)</td></tr>
+  </tbody>
+</table>
+<div class="cap">Table 1. Base versus fine-tuned model, same data and metric code, one training run.</div>
+<p>Fine-tuning improved BLEU on both the full test set and the 300-sentence sample. Entity accuracy rose by about a fifth in relative terms, more than twice the relative BLEU gain, which is what the paper's argument predicts if the fine-tune mainly teaches the model how names are rendered in Spanish. Absolute entity accuracy stays low for both models. Even after fine-tuning, most test sentences in the sample still miss the accepted entity translation, which fits a method that never looks names up and only learns from 739 examples.</p>
+
+<h2>5 Limitations</h2>
+<p>The result rests on one training run, so it carries no estimate of how much the gain varies with the random seed. The entity figure comes from 300 sentences and a stricter check than the official metric, so its absolute value is rough, though both models were scored the same way. I did not compute COMET, the second official metric, so these numbers cannot be placed on the task leaderboard. Spanish is a high-resource language for NLLB, and the paper covers ten languages; the gain may be larger or smaller elsewhere. Finally, the training data and hyperparameters differ from the original work for the reasons given above.</p>
+<p>The repository includes a second notebook, <code>extended_eval.ipynb</code>, that addresses the first three points: three seeds, the official M-ETA and COMET-22 on the full test set, and entity accuracy per entity type. Its results will go into version 2 of this report.</p>
+
+<h2>6 Availability and use of AI tools</h2>
+<p>The notebooks and this report are at <a href="https://github.com/VGokulsai/nllb-entity-mt">github.com/VGokulsai/nllb-entity-mt</a>. The base model is released under CC BY-NC 4.0 and the data under CC BY-SA 4.0. I wrote and ran the notebook with coaching from Claude (Anthropic), which also helped draft this report. I ran every experiment, and every number above is copied from the notebook's saved output.</p>
+
+<h2>References</h2>
+<ol class="refs">
+<li>Conia, S., Li, M., Navigli, R., and Potdar, S. 2025. SemEval-2025 Task 2: Entity-Aware Machine Translation. In <i>Proceedings of the 19th International Workshop on Semantic Evaluation (SemEval-2025)</i>, pages 2535–2557, Vienna. https://aclanthology.org/2025.semeval-1.326/</li>
+<li>Gundam, R., Marri, A., Malladi, A., and Mamidi, R. 2025. Zero at SemEval-2025 Task 2: Entity-Aware Machine Translation: Fine-Tuning NLLB for Improved Named Entity Translation. In <i>Proceedings of SemEval-2025</i>, pages 1187–1191, Vienna. https://aclanthology.org/2025.semeval-1.157/</li>
+<li>Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L., and Chen, W. 2022. LoRA: Low-Rank Adaptation of Large Language Models. In <i>ICLR 2022</i>. arXiv:2106.09685</li>
+<li>Mangrulkar, S., Gugger, S., Debut, L., Belkada, Y., Paul, S., Bossan, B., and Tietz, M. 2022. PEFT: State-of-the-art Parameter-Efficient Fine-Tuning methods. https://github.com/huggingface/peft</li>
+<li>NLLB Team, Costa-jussà, M. R., et al. 2022. No Language Left Behind: Scaling Human-Centered Machine Translation. arXiv:2207.04672</li>
+<li>Post, M. 2018. A Call for Clarity in Reporting BLEU Scores. In <i>Proceedings of the Third Conference on Machine Translation</i>, pages 186–191, Brussels. doi:10.18653/v1/W18-6319</li>
+</ol>
+</body></html>
